@@ -100,14 +100,14 @@ fn get_start_index(take_val: &TakeValue, total: i64) -> Option<u64> {
             match n.cmp(&(0i64)) {
                 Equal => None,
                 Greater => {
-                    if total <= n {
+                    if total < n {
                         return None;
                     }
 
-                    Some(n as u64)
+                    Some((n - 1) as u64)
                 }
                 Less => {
-                    if total <= n.abs() {
+                    if total < n.abs() {
                         return Some(0);
                     }
 
@@ -124,12 +124,21 @@ fn print_lines(
     total_lines: i64,
 ) -> MyResult<()>
 {
-    match get_start_index(num_lines, total_lines) {
-        None => (),
-        Some(start) => {
-            for line in file.lines().skip(start as usize) {
-                println!("{}", line?);
+    if let Some(start) = get_start_index(num_lines, total_lines) {
+        let mut line_count = 0;
+        let mut buf = String::new();
+
+        loop {
+            let bytes_read = file.read_line(&mut buf)?;
+            if bytes_read == 0 {
+                break;
             }
+
+            if line_count >= start {
+                print!("{}", buf);
+            }
+            line_count += 1;
+            buf.clear();
         }
     }
 
@@ -150,7 +159,7 @@ fn print_bytes<T>(
 
             let mut buf = Vec::new();
             file.read_to_end(&mut buf)?;
-            println!("{}", String::from_utf8_lossy(&buf));
+            print!("{}", String::from_utf8_lossy(&buf));
         }
     }
 
@@ -160,21 +169,25 @@ fn print_bytes<T>(
 pub fn run(cli: &Cli) -> MyResult<()> {
     let file_count = cli.files.len();
 
-    for filename in &cli.files {
-        if file_count > 1 && !cli.quiet {
-            println!("==> {} <==", filename);
-        }
-
+    for (i, filename) in cli.files.iter().enumerate() {
         match File::open(filename) {
             Err(e) => eprintln!("{}: {}", filename, e),
             Ok(f) => {
-                let (total_lines, total_bytes) = count_lines_bytes(filename)?;
+                if file_count > 1 && !cli.quiet {
+                    println!(
+                        "{}==> {} <==",
+                        if i > 0 { "\n" } else { "" },
+                        filename,
+                    );
+                }
 
+                let (total_lines, total_bytes) = count_lines_bytes(filename)?;
                 if cli.bytes.is_some() {
                     print_bytes(f, &cli.bytes.as_ref().unwrap(), total_bytes)?;
-                } else {
-                    print_lines(BufReader::new(f), &cli.lines, total_lines)?;
+                    continue;
                 }
+
+                print_lines(BufReader::new(f), &cli.lines, total_lines)?;
             }
         }
     }
@@ -254,9 +267,9 @@ mod tests {
 
         assert_eq!(get_start_index(&TakeNum(2), 1), None);
 
-        assert_eq!(get_start_index(&TakeNum(1), 10), Some(1));
-        assert_eq!(get_start_index(&TakeNum(2), 10), Some(2));
-        assert_eq!(get_start_index(&TakeNum(3), 10), Some(3));
+        assert_eq!(get_start_index(&TakeNum(1), 10), Some(0));
+        assert_eq!(get_start_index(&TakeNum(2), 10), Some(1));
+        assert_eq!(get_start_index(&TakeNum(3), 10), Some(2));
 
         assert_eq!(get_start_index(&TakeNum(-1), 10), Some(9));
         assert_eq!(get_start_index(&TakeNum(-2), 10), Some(8));
