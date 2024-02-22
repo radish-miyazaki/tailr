@@ -72,9 +72,9 @@ fn count_lines_bytes(filename: &str) -> MyResult<(i64, i64)> {
 
     let mut bytes: i64 = 0;
     let mut lines: i64 = 0;
-    let mut buf = String::new();
+    let mut buf: Vec<u8> = Vec::new();
     loop {
-        let line_bytes = rdr.read_line(&mut buf)? as i64;
+        let line_bytes = rdr.read_until(b'\n', &mut buf)? as i64;
         if line_bytes == 0 {
             break;
         }
@@ -126,16 +126,16 @@ fn print_lines(
 {
     if let Some(start) = get_start_index(num_lines, total_lines) {
         let mut line_count = 0;
-        let mut buf = String::new();
 
+        let mut buf: Vec<u8> = Vec::new();
         loop {
-            let bytes_read = file.read_line(&mut buf)?;
+            let bytes_read = file.read_until(b'\n', &mut buf)?;
             if bytes_read == 0 {
                 break;
             }
 
             if line_count >= start {
-                print!("{}", buf);
+                print!("{}", String::from_utf8_lossy(&buf));
             }
             line_count += 1;
             buf.clear();
