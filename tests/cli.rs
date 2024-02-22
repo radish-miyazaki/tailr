@@ -103,7 +103,7 @@ fn run(args: &[&str], expected_file: &str) -> TestResult {
     Command::cargo_bin(PRG)?
         .args(args)
         .assert()
-        .stdout(expected.to_string());
+        .stdout(predicate::eq(expected.as_bytes()));
 
     Ok(())
 }
